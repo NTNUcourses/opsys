@@ -1,2 +1,2 @@
 # opsys
-Examples and Demos used in the operation system courses at NTNU
+Examples, demos and helper files used in the operating system courses at NTNU
