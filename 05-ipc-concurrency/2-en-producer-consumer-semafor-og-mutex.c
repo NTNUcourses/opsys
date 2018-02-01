@@ -3,17 +3,19 @@
 #include <unistd.h>     /* usleep */
 #include <pthread.h>
 #include <semaphore.h>
-#define SHARED 0        /* process-sharing if !=0, thread-sharing if =0*/
-#define BUF_SIZE 10
+
+#define SHARED 0  /* process-sharing if !=0, thread-sharing if =0*/
+#define BUF_SIZE 20
 #define MAX_MOD 100000
 #define NUM_ITER 200
 
-void *Producer(void *); /* Producer thread */
-void *Consumer(void *); /* Consumer thread */
+void* Producer(void *); /* Producer thread */
+void* Consumer(void *); /* Consumer thread */
 
 sem_t empty;            /* empty: How many empty buffer slots */
 sem_t full;             /* full: How many full buffer slots */
 pthread_mutex_t mutex;  /* mutex: Mutex lock */
+
 int g_data[BUF_SIZE];   /* shared finite buffer  */
 int g_idx;              /* index to next available slot in buffer, 
                            remember that globals are set to zero
@@ -21,19 +23,19 @@ int g_idx;              /* index to next available slot in buffer,
 
 int main(void) {
 	pthread_t pid, cid;
-	
+
 	// Initialie the semaphores
 	sem_init(&empty, SHARED, BUF_SIZE);
 	sem_init(&full, SHARED, 0);
 	// Initialize the mutex
 	pthread_mutex_init(&mutex,0);
 
-	// Start both the producer and the consumer.
+	// Create the threads
 	printf("main started\n");
 	pthread_create(&pid, NULL, Producer, NULL);
 	pthread_create(&cid, NULL, Consumer, NULL);
-	
-	// Wait for the 
+
+	// And wait for them to finish.
 	pthread_join(pid, NULL);
 	pthread_join(cid, NULL);
 	printf("main done\n");
@@ -46,28 +48,35 @@ void *Producer(void *arg) {
 	int i=0, j;
 
 	while(i < NUM_ITER) {
-		// Sleep a random time, to simulate the generation of something
+		// pretend to generate an item by a random wait
 		usleep(rand()%MAX_MOD);
 		
-		// Wait for at least one empty slot in the buffer
+		// Wait for at least one empty slot
 		sem_wait(&empty);
-		// Try to enter region with exclusive access.
+		// Wait for exclusive access to the buffer
 		pthread_mutex_lock(&mutex);
+	
+		// Check if there is content there already. If so, print 
+    // a warning and exit.
+		if(g_data[g_idx] == 1) { 
+			printf("Producer overwrites!, idx er %d\n",g_idx); 
+			exit(0); 
+		}
 		
-		// Insert item into buffer
-		g_data[g_idx] = 1;
+		// Fill buffer with "data" (ie: 1) and increase the index.
+		g_data[g_idx]=1;
 		g_idx++;
 		
-		// Print buffer status
-		j=0; printf("(Producer, Buffer usage is %d): ", g_idx);
+		// Print buffer status.
+		j=0; printf("(Producer, idx is %d): ",g_idx);
 		while(j < g_idx) { j++; printf("="); } printf("\n");
 		
-		// Leave region with exclusive access
+		// Leave region with exlusive access
 		pthread_mutex_unlock(&mutex);
-		// Increase the counter for full bufferslots.
+		// Increase the counter of full bufferslots.
 		sem_post(&full);
 		
-		i++;    
+		i++;		
 	}
 
 	return 0;
@@ -78,30 +87,38 @@ void *Consumer(void *arg) {
 	int i=0, j;
 
 	while(i < NUM_ITER) {
-		// Wait a random time, to pretend to consume the item.
+		// Wait a random amount of time, simulating consuming of an item.
 		usleep(rand()%MAX_MOD);
 		
 		// Wait for at least one slot to be full
 		sem_wait(&full);
-		// Wait for exclsive access to critical region
+		// Wait for exclusive access to the buffers
 		pthread_mutex_lock(&mutex);
+	
+		// Checkt that the buffer actually contains some data 
+    // at the current slot.
+		if(g_data[g_idx-1] == 0) { 
+			printf("Consumes nothing!, idx er %d\n",g_idx);
+			exit(0);
+		}
 		
-		// Remove item from buffer.
+		// Remove the data from the buffer (ie: Set it to 0) 
 		g_data[g_idx-1]=0;
 		g_idx--;
 		
-		// Print the buffer status.
-		j=0; printf("(Consumer, Buffer usage is %d): ", g_idx);
+		// Print the current buffer status
+		j=0; printf("(Consumer, idx is %d): ",g_idx);
 		while(j < g_idx) { j++; printf("="); } printf("\n");
 		
 		// Leave region with exclusive access
 		pthread_mutex_unlock(&mutex);
-		// Increase counter of empty bufferslots.
-		sem_post(&empty);
-		
+		// Increase the counter of empty slots.
+		sem_post(&empty);  	
+
 		i++;
 	}
 
 	return 0;
 
 }
+
