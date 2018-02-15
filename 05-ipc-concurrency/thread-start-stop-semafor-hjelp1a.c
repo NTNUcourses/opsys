@@ -33,6 +33,8 @@ void* tfunc(void *arg) {
       // Hvis "jeg" skal signalisere i:
 
           // Tell opp semafor til tråd i
+
+  pthread_exit(NULL);
 }
 
 int main(void) {
