@@ -1,10 +1,8 @@
 # statisk kode analyse
 # https://github.com/PowerShell/PSScriptAnalyzer
 
-# som administrator
-Install-Module -Name PSScriptAnalyzer
+Install-Module -Name PSScriptAnalyzer -Scope CurrentUser
 
-# tilbake som vanlig bruker
 Invoke-ScriptAnalyzer a.ps
 
 # skriver du et litt større script/prosjekt, 
